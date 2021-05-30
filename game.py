@@ -1,7 +1,20 @@
+from gpiozero import LED
+from time import sleep
 from keras.models import load_model
 import cv2
 import numpy as np
 from random import choice
+import serial
+import time
+from serial import Serial
+
+
+
+# forward = LED(2)
+# backward = LED(16)
+# left = LED(20)
+# right = LED(21)
+# left.on()
 
 REV_CLASS_MAP = {
     0: "rock",
@@ -44,54 +57,78 @@ cap = cv2.VideoCapture(0)
 
 prev_move = None
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        continue
 
-    cv2.rectangle(frame, (10, 70), (300, 340), (0, 255, 0), 2)
-    cv2.rectangle(frame, (330, 70), (630, 370), (255, 0, 0), 2)
+if __name__ == '__main__':
+    ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+    ser.flush()
 
-    # extract the region of image within the user rectangle
-    roi = frame[70:300, 10:340]
-    img = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-    img = cv2.resize(img, (227, 227))
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            continue
 
-    # predict the move made
-    pred = model.predict(np.array([img]))
-    move_code = np.argmax(pred[0])
-    user_move_name = mapper(move_code)
+        cv2.rectangle(frame, (10, 70), (300, 340), (0, 255, 0), 2)
+        # cv2.rectangle(frame, (330, 70), (630, 370), (255, 0, 0), 2)
 
-    # predict the winner (human vs computer)
-    if prev_move != user_move_name:
-        if user_move_name != "nothing":
-            computer_move_name = choice(['rock', 'paper', 'scissors'])
-            winner = calculate_winner(user_move_name, computer_move_name)
-        else:
-            computer_move_name = "nothing"
-            winner = "Waiting..."
-    prev_move = user_move_name
+        # extract the region of image within the user rectangle
+        roi = frame[70:300, 10:340]
+        img = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
+        img = cv2.resize(img, (227, 227))
 
-    # display the information
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(frame, "Your Move: " + user_move_name,
-                (10, 50), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
-    cv2.putText(frame, "Pi's Move: " + computer_move_name,
-                (330, 50), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
-    cv2.putText(frame, "Winner: " + winner,
-                (100, 450), font, 2, (0, 255, 0), 4, cv2.LINE_AA)
+        # predict the move made
+        pred = model.predict(np.array([img]))
+        move_code = np.argmax(pred[0])
+        user_move_name = mapper(move_code)
 
-    if computer_move_name != "nothing":
-        icon = cv2.imread(
-            "test_img/{}.png".format(computer_move_name))
-        icon = cv2.resize(icon, (300, 300))
-        frame[70:370, 330:630] = icon
+        # predict the winner (human vs computer)
+        # if prev_move != user_move_name:
+        #     if user_move_name != "nothing":
+        #         computer_move_name = choice(['rock', 'paper', 'scissors'])
+        #         winner = calculate_winner(user_move_name, computer_move_name)
+        #     else:
+        #         computer_move_name = "nothing"
+        #         winner = "Waiting..."
+        # prev_move = user_move_name
 
-    cv2.imshow("Rock Paper Scissors", frame)
+        # # display the information
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(frame, "Your Move: " + user_move_name,
+                    (10, 50), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
-    k = cv2.waitKey(10)
-    if k == ord('q'):
-        break
+
+        # if user_move_name == "scissors":
+        #     ser.write(b"forward\n")
+        #     forward.on()
+        #     time.sleep(1)
+        # elif user_move_name == "rock":
+        #     left.on()
+        #     ser.write(b"left\n")
+        #     time.sleep(1)
+        # elif user_move_name == "paper":
+        #     ser.write(b"right\n")
+        #     right.on()
+        #     time.sleep(1)
+        # else:
+        #     backward.on()
+        #     ser.write("stay\n")
+        #     time.sleep(1)
+
+        # cv2.putText(frame, "Pi's Move: " + computer_move_name,
+        #             (330, 50), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        # cv2.putText(frame, "Winner: " + winner,
+        #             (100, 450), font, 2, (0, 255, 0), 4, cv2.LINE_AA)
+
+        # if computer_move_name != "nothing":
+        #     icon = cv2.imread(
+        #         "test_img/{}.png".format(computer_move_name))
+        #     icon = cv2.resize(icon, (300, 300))
+        #     frame[70:370, 330:630] = icon
+
+        cv2.imshow("Rock Paper Scissors", frame)
+
+        k = cv2.waitKey(10)
+        if k == ord('q'):
+            break
 
 cap.release()
 cv2.destroyAllWindows()
